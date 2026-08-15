@@ -83,6 +83,21 @@ class AppPreferences(context: Context) {
         val kmLanguageSwitchToSuper; get() = prefs.getBoolean("km_language_switch_to_super", false)
         val kmRightAltToSuper; get() = prefs.getBoolean("km_right_alt_to_super", false)
         val kmBackToEscape; get() = prefs.getBoolean("km_back_to_escape", false)
+
+        /**
+         * How to deliver committed/text-box text to the remote:
+         *  "off"          -> key events (default; reliable for ASCII, lossy for CJK on many servers)
+         *  "ctrl_v"       -> clipboard + Ctrl+V (paste from CLIPBOARD selection; GUI apps)
+         *  "shift_insert" -> clipboard + Shift+Insert (paste from PRIMARY selection; terminals)
+         *
+         * Clipboard-based delivery is reliable for Chinese/CJK on servers which support
+         * clipboard + paste, because it bypasses the server's X KeySym mapping (which is
+         * usually missing CJK characters, so they get dropped/mangled by the server).
+         * Note: this only sends to the SERVER's clipboard; the local (phone) clipboard
+         * is never touched. To also stop the server's clipboard from syncing back to the
+         * phone, turn off "Clipboard sync" in Server preferences.
+         */
+        val textInputDelivery; get() = prefs.getString("input_text_delivery", "off") ?: "off"
     }
 
     inner class Server {

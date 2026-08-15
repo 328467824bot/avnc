@@ -162,6 +162,14 @@
             app:title="@string/pref_vk_use_super_with_single_tap" />
 
         <ListPreference
+            app:defaultValue="off"
+            app:entries="@array/text_delivery_entries"
+            app:entryValues="@array/text_delivery_values"
+            app:key="input_text_delivery"
+            app:title="@string/pref_text_delivery"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
             android:entries="@array/vk_row_count_values"
             android:entryValues="@array/vk_row_count_values"
             app:defaultValue="2"

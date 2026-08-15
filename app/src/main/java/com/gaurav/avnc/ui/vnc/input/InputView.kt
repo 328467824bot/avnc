@@ -26,6 +26,7 @@ import com.gaurav.avnc.viewmodel.VncViewModel
  */
 class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, attrs) {
 
+    private var viewModel: VncViewModel? = null
     private var inputHandler: InputHandler? = null
 
     /**
@@ -34,6 +35,36 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
     inner class InputConnection : BaseInputConnection(this, false) {
         override fun sendKeyEvent(event: KeyEvent): Boolean {
             return inputHandler?.onKeyEvent(event) == true || super.sendKeyEvent(event)
+        }
+
+        /**
+         * When "send text via clipboard" is enabled, committed text is delivered to
+         * the server through clipboard + Ctrl+V (see Messenger.sendClipboardPaste)
+         * instead of as individual key events. This is far more reliable for CJK
+         * text, because key events depend on the server's keymap containing the
+         * matching X KeySym, which is usually not the case for CJK characters.
+         */
+        override fun commitText(text: CharSequence, newCursorPosition: Int): Boolean {
+            val str = text.toString()
+            val delivery = viewModel?.pref?.input?.textInputDelivery
+            if (str.isNotEmpty() && (delivery == "ctrl_v" || delivery == "shift_insert")) {
+                viewModel?.messenger?.sendClipboardPaste(str, delivery == "shift_insert")
+                return true
+            }
+            return super.commitText(text, newCursorPosition)
+        }
+
+        /**
+         * In clipboard mode, composing (preview) text must never be flushed to the
+         * server — only committed text is sent (via commitText). Otherwise the
+         * default BaseInputConnection.finishComposingText() would send the
+         * uncommitted composing text (e.g. intermediate pinyin letters) as key events.
+         */
+        override fun finishComposingText(): Boolean {
+            val delivery = viewModel?.pref?.input?.textInputDelivery
+            if (delivery == "ctrl_v" || delivery == "shift_insert")
+                return true
+            return super.finishComposingText()
         }
     }
 
@@ -50,6 +81,7 @@ class InputView(context: Context?, attrs: AttributeSet? = null) : View(context, 
      * Should be called from [com.gaurav.avnc.ui.vnc.VncActivity.onCreate].
      */
     fun initialize(viewModel: VncViewModel, inputHandler: InputHandler) {
+        this.viewModel = viewModel
         this.inputHandler = inputHandler
 
         // Hide local cursor if requested and supported

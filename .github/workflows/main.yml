@@ -28,8 +28,14 @@ jobs:
           CI_SIGNING_KS_PASSWORD: ${{ secrets.CI_SIGNING_KS_PASSWORD }}
         working-directory: ./app/build/outputs/apk/ci/
         run: |
-          echo $CI_SIGNING_KS | base64 --decode > keystore.jks
-          $ANDROID_HOME/build-tools/34.0.0/apksigner sign --in app-ci-unsigned.apk --out app-ci.apk --ks keystore.jks --ks-pass 'env:CI_SIGNING_KS_PASSWORD'
+          if [ -n "$CI_SIGNING_KS" ]; then
+            echo "$CI_SIGNING_KS" | base64 --decode > keystore.jks
+            $ANDROID_HOME/build-tools/34.0.0/apksigner sign --in app-ci-unsigned.apk --out app-ci.apk --ks keystore.jks --ks-pass 'env:CI_SIGNING_KS_PASSWORD'
+          else
+            # No signing secret on this fork: sign with a throwaway key so the APK is still installable
+            keytool -genkeypair -v -keystore ci.keystore -alias ci -keyalg RSA -keysize 2048 -validity 10000 -storepass changeit -keypass changeit -dname "CN=AVNC-CI"
+            $ANDROID_HOME/build-tools/34.0.0/apksigner sign --in app-ci-unsigned.apk --out app-ci.apk --ks ci.keystore --ks-pass pass:changeit
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v7
