@@ -316,17 +316,23 @@ class VirtualKeys(private val activity: VncActivity, private val inputHandler: I
 
     private fun handleTextBoxAction(textBox: EditText) {
         val text = textBox.text?.ifEmpty { "\n" }?.toString() ?: return
-        val events = keyCharMap.getEvents(text.toCharArray())
 
-        // Release Meta keys to avoid interference with these key events
+        // Release Meta keys to avoid interference with the key events below
         releaseMetaKeys()
 
-        // These events are sent to KeyHandler.onKeyEvent() instead of onVkKeyEvent()
-        // to treat these like normal system key events.
-        if (events == null)
-            inputHandler.onKeyEvent(KeyEvent(SystemClock.uptimeMillis(), text, 0, 0))
-        else
-            events.forEach { inputHandler.onKeyEvent(it) }
+        when (pref.input.textInputDelivery) {
+            "ctrl_v" -> viewModel.messenger?.sendClipboardPaste(text, false)
+            "shift_insert" -> viewModel.messenger?.sendClipboardPaste(text, true)
+            else -> {
+                // These events are sent to KeyHandler.onKeyEvent() instead of onVkKeyEvent()
+                // to treat these like normal system key events.
+                val events = keyCharMap.getEvents(text.toCharArray())
+                if (events == null)
+                    inputHandler.onKeyEvent(KeyEvent(SystemClock.uptimeMillis(), text, 0, 0))
+                else
+                    events.forEach { inputHandler.onKeyEvent(it) }
+            }
+        }
 
         textBox.setText("")
     }

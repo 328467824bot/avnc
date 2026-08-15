@@ -12,6 +12,7 @@ import android.graphics.PointF
 import android.util.Log
 import com.gaurav.avnc.vnc.PointerButton
 import com.gaurav.avnc.vnc.VncClient
+import com.gaurav.avnc.vnc.XKeySym
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -94,6 +95,42 @@ class Messenger(private val client: VncClient) {
 
     fun sendClipboardText(text: String) {
         execute { client.sendCutText(text) }
+    }
+
+    /**
+     * Sends given text to the remote server by placing it on the server's clipboard
+     * and then triggering a paste (Ctrl+V or Shift+Insert).
+     *
+     * This is an alternative to delivering text as individual key events. Key events
+     * rely on the server's keyboard layout containing the matching X KeySym, which
+     * is almost never the case for CJK characters — so most characters get silently
+     * dropped by the server. Clipboard-based delivery sidesteps the keysym mapping
+     * completely and works reliably on servers which support clipboard + paste.
+     * (TigerVNC owns both the PRIMARY and CLIPBOARD selections after ClientCutText,
+     * so both Ctrl+V and Shift+Insert can paste the text.)
+     *
+     * Everything runs on the sender thread, in order, so the clipboard is updated
+     * before the paste key events are sent.
+     *
+     * @param useShiftInsert  true -> paste with Shift+Insert (PRIMARY; good for terminals
+     *                        like xterm), false -> paste with Ctrl+V (CLIPBOARD; GUI apps).
+     */
+    fun sendClipboardPaste(text: String, useShiftInsert: Boolean = false) {
+        execute {
+            client.sendCutText(text)
+            runCatching { Thread.sleep(100) } // Give the server time to update its clipboard
+            if (useShiftInsert) {
+                client.sendKeyEvent(XKeySym.XK_Shift_L, 0, true)
+                client.sendKeyEvent(XKeySym.XK_Insert, 0, true)
+                client.sendKeyEvent(XKeySym.XK_Insert, 0, false)
+                client.sendKeyEvent(XKeySym.XK_Shift_L, 0, false)
+            } else {
+                client.sendKeyEvent(XKeySym.XK_Control_L, 0, true)
+                client.sendKeyEvent(XKeySym.XK_v, 0, true)
+                client.sendKeyEvent(XKeySym.XK_v, 0, false)
+                client.sendKeyEvent(XKeySym.XK_Control_L, 0, false)
+            }
+        }
     }
 
     fun setDesktopSize(width: Int, height: Int) {

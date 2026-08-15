@@ -227,4 +227,16 @@
         <item>Item 2</item>
         <item>Item 3</item>
     </string-array>
+
+    <!--Text delivery method for the "Send text to server" box and IME commits (see InputView/VirtualKeys)-->
+    <string-array name="text_delivery_entries">
+        <item>@string/text_delivery_off</item>
+        <item>@string/text_delivery_ctrl_v</item>
+        <item>@string/text_delivery_shift_insert</item>
+    </string-array>
+    <string-array name="text_delivery_values">
+        <item>off</item>
+        <item>ctrl_v</item>
+        <item>shift_insert</item>
+    </string-array>
 </resources>
